@@ -15,7 +15,11 @@ module Devise
       key = key_for(column)
 
       loop do
-        raw = Devise.friendly_token
+        raw =   if column == :reset_password_token
+                        Devise.friendly_digital_token
+                else
+                        Devise.friendly_token
+                end
         enc = OpenSSL::HMAC.hexdigest(@digest, key, raw)
         break [raw, enc] unless klass.to_adapter.find_first({ column => enc })
       end

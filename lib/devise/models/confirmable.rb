@@ -51,7 +51,7 @@ module Devise
           after_create :send_on_create_confirmation_instructions, if: :send_confirmation_notification?
           after_update :send_reconfirmation_instructions, if: :reconfirmation_required?
         end
-        before_update :postpone_email_change_until_confirmation_and_regenerate_confirmation_token, if: :postpone_email_change?
+        before_update :postpone_mobile_number_change_until_confirmation_and_regenerate_confirmation_token, if: :postpone_mobile_number_change?
       end
 
       def initialize(*args, &block)
@@ -65,7 +65,7 @@ module Devise
 
       def self.required_fields(klass)
         required_methods = [:confirmation_token, :confirmed_at, :confirmation_sent_at]
-        required_methods << :unconfirmed_email if klass.reconfirmable
+        required_methods << :unconfirmed_mobile_number if klass.reconfirmable
         required_methods
       end
 
@@ -75,7 +75,7 @@ module Devise
       def confirm(args={})
         pending_any_confirmation do
           if confirmation_period_expired?
-            self.errors.add(:email, :confirmation_period_expired,
+            self.errors.add(:mobile_number, :confirmation_period_expired,
               period: Devise::TimeInflector.time_ago_in_words(self.class.confirm_within.ago))
             return false
           end
@@ -84,8 +84,8 @@ module Devise
 
           saved = if pending_reconfirmation?
             skip_reconfirmation!
-            self.email = unconfirmed_email
-            self.unconfirmed_email = nil
+            self.mobile_number = unconfirmed_mobile_number
+            self.unconfirmed_mobile_number = nil
 
             # We need to validate in such cases to enforce e-mail uniqueness
             save(validate: true)
@@ -104,7 +104,7 @@ module Devise
       end
 
       def pending_reconfirmation?
-        self.class.reconfirmable && unconfirmed_email.present?
+        self.class.reconfirmable && unconfirmed_mobile_number.present?
       end
 
       # Send confirmation instructions by email
@@ -113,7 +113,7 @@ module Devise
           generate_confirmation_token!
         end
 
-        opts = pending_reconfirmation? ? { to: unconfirmed_email } : { }
+        opts = pending_reconfirmation? ? { to: unconfirmed_mobile_number } : { }
         send_devise_notification(:confirmation_instructions, @raw_confirmation_token, opts)
       end
 
@@ -231,7 +231,7 @@ module Devise
           if (!confirmed? || pending_reconfirmation?)
             yield
           else
-            self.errors.add(:email, :already_confirmed)
+            self.errors.add(:mobile_number, :already_confirmed)
             false
           end
         end
@@ -242,7 +242,7 @@ module Devise
           if self.confirmation_token && !confirmation_period_expired?
             @raw_confirmation_token = self.confirmation_token
           else
-            self.confirmation_token = @raw_confirmation_token = Devise.friendly_token
+            self.confirmation_token = @raw_confirmation_token = Devise.friendly_digital_token
             self.confirmation_sent_at = Time.now.utc
           end
         end
@@ -251,30 +251,30 @@ module Devise
           generate_confirmation_token && save(validate: false)
         end
 
-        def postpone_email_change_until_confirmation_and_regenerate_confirmation_token
+        def postpone_mobile_number_change_until_confirmation_and_regenerate_confirmation_token
           @reconfirmation_required = true
-          self.unconfirmed_email = self.email
-          self.email = self.email_was
+          self.unconfirmed_mobile_number = self.mobile_number
+          self.mobile_number = self.mobile_number_was
           self.confirmation_token = nil
           generate_confirmation_token
         end
 
-        def postpone_email_change?
+        def postpone_mobile_number_change?
           postpone = self.class.reconfirmable &&
-            email_changed? &&
+            mobile_number_changed? &&
             !@bypass_confirmation_postpone &&
-            self.email.present? &&
-            (!@skip_reconfirmation_in_callback || !self.email_was.nil?)
+            self.mobile_number.present? &&
+            (!@skip_reconfirmation_in_callback || !self.mobile_number_was.nil?)
           @bypass_confirmation_postpone = false
           postpone
         end
 
         def reconfirmation_required?
-          self.class.reconfirmable && @reconfirmation_required && (self.email.present? || self.unconfirmed_email.present?)
+          self.class.reconfirmable && @reconfirmation_required && (self.mobile_number.present? || self.unconfirmed_mobile_number.present?)
         end
 
         def send_confirmation_notification?
-          confirmation_required? && !@skip_confirmation_notification && self.email.present?
+          confirmation_required? && !@skip_confirmation_notification && self.mobile_number.present?
         end
 
         # A callback initiated after successfully confirming. This can be
@@ -296,7 +296,7 @@ module Devise
         # field. If no user is found, returns a new user with an email not found error.
         # Options must contain the user email
         def send_confirmation_instructions(attributes={})
-          confirmable = find_by_unconfirmed_email_with_errors(attributes) if reconfirmable
+          confirmable = find_by_unconfirmed_mobile_number_with_errors(attributes) if reconfirmable
           unless confirmable.try(:persisted?)
             confirmable = find_or_initialize_with_errors(confirmation_keys, attributes, :not_found)
           end
@@ -324,11 +324,11 @@ module Devise
         end
 
         # Find a record for confirmation by unconfirmed email field
-        def find_by_unconfirmed_email_with_errors(attributes = {})
+        def find_by_unconfirmed_mobile_number_with_errors(attributes = {})
           attributes = attributes.slice(*confirmation_keys).permit!.to_h if attributes.respond_to? :permit
-          unconfirmed_required_attributes = confirmation_keys.map { |k| k == :email ? :unconfirmed_email : k }
+          unconfirmed_required_attributes = confirmation_keys.map { |k| k == :mobile_number ? :unconfirmed_mobile_number : k }
           unconfirmed_attributes = attributes.symbolize_keys
-          unconfirmed_attributes[:unconfirmed_email] = unconfirmed_attributes.delete(:email)
+          unconfirmed_attributes[:unconfirmed_mobile_number] = unconfirmed_attributes.delete(:mobile_number)
           find_or_initialize_with_errors(unconfirmed_required_attributes, unconfirmed_attributes, :not_found)
         end
 

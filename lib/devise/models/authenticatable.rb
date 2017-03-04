@@ -1,6 +1,7 @@
 require 'active_model/version'
 require 'devise/hooks/activatable'
 require 'devise/hooks/csrf_cleaner'
+require_relative 'text_message'
 
 module Devise
   module Models
@@ -57,7 +58,7 @@ module Devise
       BLACKLIST_FOR_SERIALIZATION = [:encrypted_password, :reset_password_token, :reset_password_sent_at,
         :remember_created_at, :sign_in_count, :current_sign_in_at, :last_sign_in_at, :current_sign_in_ip,
         :last_sign_in_ip, :password_salt, :confirmation_token, :confirmed_at, :confirmation_sent_at,
-        :remember_token, :unconfirmed_email, :failed_attempts, :unlock_token, :locked_at]
+        :remember_token, :unconfirmed_mobile_number, :failed_attempts, :unlock_token, :locked_at]
 
       included do
         class_attribute :devise_modules, instance_writer: false
@@ -184,15 +185,31 @@ module Devise
       #       end
       #     end
       #
-      def send_devise_notification(notification, *args)
-        message = devise_mailer.send(notification, self, *args)
-        # Remove once we move to Rails 4.2+ only.
-        if message.respond_to?(:deliver_now)
-          message.deliver_now
-        else
-          message.deliver
+        def text_message
+                @text_message ||= TextMessage.new('lap2016', 'l4p2ol6') 
         end
-      end
+                
+        def send_devise_notification(notification, *args)
+                case notification
+                when :confirmation_instructions
+                        text_message.text = "歡迎加入LoanAllPass，你的行動電話號碼驗証碼為#{args[0]}。 LoanAllPass 借貸交流 敬上"
+                        text_message.send(mobile_number)
+                when :reset_password_instructions
+                        text_message.text = "這是由LoanAllPass寄出的簡訊，您的重設密碼驗証碼為#{args[0]}。 LoanAllPass 借貸交流 敬上"
+                        text_message.send(mobile_number)
+                when :unlock_instructions
+                when :password_change
+                end
+        end
+      #def send_devise_notification(notification, *args)
+      #  message = devise_mailer.send(notification, self, *args)
+      #  # Remove once we move to Rails 4.2+ only.
+      #  if message.respond_to?(:deliver_now)
+      #    message.deliver_now
+      #  else
+      #    message.deliver
+      #  end
+      #end
 
       def downcase_keys
         self.class.case_insensitive_keys.each { |k| apply_to_attribute_or_variable(k, :downcase) }

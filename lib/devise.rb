@@ -481,6 +481,11 @@ module Devise
     SecureRandom.urlsafe_base64(rlength).tr('lIO0', 'sxyz')
   end
 
+  # Generate more friendly_token consisting of only digits
+  def self.friendly_digital_token(length = 6)
+        Random.rand(10**(length -1 )...10**length).to_s
+  end
+
   # constant-time comparison algorithm to prevent timing attacks
   def self.secure_compare(a, b)
     return false if a.blank? || b.blank? || a.bytesize != b.bytesize
